@@ -1,0 +1,113 @@
+Project Title:
+Sitemap to XLSX Chrome Extension
+
+Objective
+Develop a Chrome extension using TypeScript that enables users to fetch, filter, and export sitemap URLs into a clean .xlsx file. The extension will provide a modern, user-friendly interface and robust functionality for managing website sitemaps.
+
+Key Features
+1. User Interface (UI):
+Popup Interface:
+
+Input field for the website or sitemap URL.
+Buttons for:
+"Fetch Sitemap" to retrieve URLs.
+"Filter" to open filtering options.
+"Download XLSX" to export URLs.
+Status section to display progress or errors.
+Filtering Modal:
+
+Text field for keyword matching.
+Text field for regex pattern matching.
+Preview area showing filtered results in a scrollable list.
+Buttons for:
+Apply Filter to refine URLs.
+Clear Filter to reset.
+Modern Design:
+
+Use Material Design principles for responsiveness and usability.
+Incorporate animations for transitions and feedback (e.g., loading spinners).
+Core Functionalities
+1. Fetch Sitemap URLs:
+Accept both website and sitemap URLs as input.
+If a generic website URL is provided:
+Attempt to auto-detect and fetch /sitemap.xml.
+Parse the sitemap data to extract all URLs.
+Handle both XML and gzipped sitemap formats.
+2. Filter URLs:
+Allow users to refine URLs based on:
+Keyword Matching: Match URLs containing user-specified keywords.
+Regex Matching: Use regex patterns for advanced filtering.
+Display real-time previews of filtered URLs.
+3. Export to XLSX:
+Enable exporting:
+All URLs.
+Filtered URLs.
+Generate a well-formatted .xlsx file with URLs in a single column.
+4. Error Handling:
+Provide clear error messages for:
+Invalid URL input.
+Incorrect or poorly formatted sitemaps.
+Network failures or timeout.
+Invalid regex patterns.
+5. Download Management:
+Show a progress indicator for large sitemap downloads.
+Confirm when the download is complete.
+Technical Requirements
+Frontend:
+TypeScript for logic and UI interactions.
+Material Design or TailwindCSS for modern, responsive styling.
+HTML/CSS for popup and modal components.
+Backend:
+Sitemap Parsing:
+Use a library to parse XML or gzipped sitemaps efficiently.
+Filtering:
+Implement keyword and regex filtering with robust validation.
+File Export:
+Use a library for generating .xlsx files in the browser.
+Chrome Extension API:
+downloads API: Manage downloading the .xlsx file.
+activeTab API: Interact with the current tab to fetch sitemaps.
+Permissions:
+Allow access to the necessary permissions for downloads and URL validation.
+Error Resilience:
+Implement try-catch logic to handle and report errors gracefully.
+Ensure smooth handling of large sitemaps (10,000+ URLs).
+Non-Functional Requirements
+Performance:
+
+Efficiently handle sitemaps with tens of thousands of URLs.
+Minimize memory usage during filtering and file generation.
+Compatibility:
+
+Fully functional on the latest version of Chrome.
+Cross-platform support for Windows, macOS, and Linux.
+UI/UX:
+
+Intuitive, modern, and responsive design.
+Provide clear user feedback during all operations.
+Security:
+
+Validate user inputs to prevent injection attacks.
+Use secure methods to handle URL fetching and processing.
+Work Items
+Frontend Development:
+Design and implement the popup interface.
+Build the filtering modal with real-time preview functionality.
+Integrate Material Design or TailwindCSS for styling.
+Backend Development:
+Implement sitemap fetching logic.
+Parse and process sitemap URLs.
+Develop URL filtering mechanisms.
+Create .xlsx file generation functionality.
+Integration:
+Connect the popup UI to backend functionalities.
+Handle real-time feedback between the UI and backend processes.
+Testing:
+Validate proper functioning with various sitemap formats.
+Test filtering with both keywords and regex.
+Ensure .xlsx files are correctly generated and downloaded.
+Handle edge cases, such as invalid inputs or network issues.
+Deployment:
+Package the extension as a Chrome Web Extension.
+Test the extension on multiple platforms (Windows, macOS, Linux).
+Submit the extension to the Chrome Web Store with all required metadata and documentation.

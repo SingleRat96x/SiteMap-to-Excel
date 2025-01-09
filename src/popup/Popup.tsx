@@ -60,8 +60,14 @@ export function Popup() {
         setStatusMessage('');
     };
 
-    const handleFetch = async () => {
-        if (!url) {
+    const handleSitemapClick = (sitemapUrl: string) => {
+        setUrl(sitemapUrl);
+        handleFetch(sitemapUrl);
+    };
+
+    const handleFetch = async (urlToFetch?: string) => {
+        const urlToUse = urlToFetch || url;
+        if (!urlToUse) {
             setState(prev => ({ ...prev, error: 'Please enter a URL' }));
             return;
         }
@@ -71,12 +77,11 @@ export function Popup() {
         setStatusMessage('Initializing...');
 
         try {
-            const urls = await fetchSitemap(url, (status: string, currentProgress: number) => {
+            const urls = await fetchSitemap(urlToUse, (status: string, currentProgress: number) => {
                 setStatusMessage(status);
                 setProgress(currentProgress);
             });
 
-            // Reset any existing filters when new URLs are fetched
             setState(prev => ({
                 ...prev,
                 urls,
@@ -98,11 +103,65 @@ export function Popup() {
             }, 1000);
 
         } catch (error) {
-            setState(prev => ({
-                ...prev,
-                isLoading: false,
-                error: error instanceof Error ? error.message : 'An unknown error occurred'
-            }));
+            if (error instanceof Error && error.message.includes('Multiple sitemaps found')) {
+                const sitemapUrls = error.message
+                    .split('Please use one of these URLs:\n')[1]
+                    .split('\n')
+                    .filter(url => url.trim());
+
+                setState(prev => ({
+                    ...prev,
+                    isLoading: false,
+                    error: (
+                        <div className="mt-4 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                                <h3 className="text-sm font-medium text-gray-700">Available Sitemaps</h3>
+                                <p className="text-xs text-gray-500 mt-1">Select a sitemap to fetch URLs</p>
+                            </div>
+                            <div className="divide-y divide-gray-200">
+                                {sitemapUrls.map((sitemapUrl, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleSitemapClick(sitemapUrl)}
+                                        className="w-full px-4 py-2.5 flex items-center space-x-2 hover:bg-gray-50 transition-colors group"
+                                    >
+                                        <svg 
+                                            className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" 
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm text-gray-600 group-hover:text-gray-900 font-medium truncate">
+                                                {sitemapUrl.split('/').pop()}
+                                            </div>
+                                            <div className="text-xs text-gray-400 group-hover:text-gray-500 truncate">
+                                                {sitemapUrl}
+                                            </div>
+                                        </div>
+                                        <svg 
+                                            className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" 
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                }));
+            } else {
+                setState(prev => ({
+                    ...prev,
+                    isLoading: false,
+                    error: error instanceof Error ? error.message : 'An unknown error occurred'
+                }));
+            }
             setProgress(0);
             setStatusMessage('');
         }
@@ -151,17 +210,15 @@ export function Popup() {
                                 )}
                             </div>
                         )}
-                        {state.urls.length > 0 && (
-                            <button
-                                onClick={handleReset}
-                                className="p-1 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                title="Reset all data"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        )}
+                        <button
+                            onClick={handleReset}
+                            className="p-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Reset all data"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -176,7 +233,7 @@ export function Popup() {
                             className="flex-1 px-3 py-1.5 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200"
                         />
                         <button
-                            onClick={handleFetch}
+                            onClick={() => handleFetch()}
                             disabled={state.isLoading}
                             className={`px-4 py-1.5 text-sm text-white font-medium rounded-lg transition-all duration-200 ${
                                 state.isLoading

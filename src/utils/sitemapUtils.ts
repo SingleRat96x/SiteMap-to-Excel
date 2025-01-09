@@ -71,61 +71,135 @@ export async function fetchSitemap(
 ): Promise<SitemapUrl[]> {
     try {
         console.log('Starting sitemap fetch for:', url);
+        onProgress?.('Initializing...', 10);
 
-        // Normalize the URL
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-            url = 'https://' + url;
-            console.log('Modified URL with https:', url);
-            onProgress?.('Adding https protocol...', 10);
+        // Step 1: URL Normalization
+        let normalizedUrl = url.trim();
+        if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+            normalizedUrl = 'https://' + normalizedUrl;
         }
+        // Remove trailing slashes but keep the path
+        normalizedUrl = normalizedUrl.replace(/\/+$/, '');
+        console.log('Normalized URL:', normalizedUrl);
 
-        // First try the direct URL if it looks like a sitemap
-        if (url.includes('sitemap') && url.endsWith('.xml')) {
-            console.log('Trying direct sitemap URL:', url);
-            onProgress?.('Fetching sitemap...', 20);
-            const response = await tryFetchSitemap(url);
-            if (response) {
-                console.log('Successfully fetched sitemap from direct URL');
-                return processSitemapResponse(response, onProgress);
+        // Function to try fetching a URL with proper headers
+        async function tryFetchUrl(urlToTry: string): Promise<Response | null> {
+            try {
+                console.log('Attempting to fetch:', urlToTry);
+                const response = await fetch(urlToTry, {
+                    headers: {
+                        'Accept': 'text/xml, application/xml, application/gzip, text/plain, */*',
+                        'User-Agent': 'Mozilla/5.0 (compatible; SitemapFetcher/1.0)',
+                        'Accept-Encoding': 'gzip, deflate'
+                    }
+                });
+                
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    console.log('Response status:', response.status, 'Content-Type:', contentType);
+                    return response;
+                }
+                console.log('Failed to fetch URL:', urlToTry, 'Status:', response.status);
+                return null;
+            } catch (error) {
+                console.log('Error fetching URL:', urlToTry, error);
+                return null;
             }
         }
 
-        // If direct URL fails or isn't a sitemap URL, try to find the sitemap
-        const baseUrl = url.replace(/\/(sitemap.*\.xml)?$/, '');
-        console.log('Base URL:', baseUrl);
-        onProgress?.('Detecting sitemap location...', 30);
+        let response: Response | null = null;
 
-        // First try robots.txt
-        const sitemapFromRobots = await findSitemapUrlFromRobotsTxt(baseUrl);
-        if (sitemapFromRobots) {
-            const response = await tryFetchSitemap(sitemapFromRobots);
-            if (response) {
-                console.log('Successfully found sitemap from robots.txt');
-                return processSitemapResponse(response, onProgress);
+        // Step 2: Try direct URL first
+        onProgress?.('Trying direct URL...', 20);
+        response = await tryFetchUrl(normalizedUrl);
+
+        // Step 3: If direct URL fails and doesn't end with .xml, try with .xml extension
+        if (!response && !normalizedUrl.endsWith('.xml')) {
+            onProgress?.('Trying with .xml extension...', 30);
+            response = await tryFetchUrl(normalizedUrl + '.xml');
+        }
+
+        // Step 4: Try common variations if still no response
+        if (!response) {
+            const baseUrl = new URL(normalizedUrl).origin;
+            const variations = [
+                '/sitemap.xml',
+                '/sitemap_index.xml',
+                '/sitemap/sitemap.xml',
+                '/sitemaps/sitemap.xml',
+                '/wp-sitemap.xml',
+                '/sitemap/index.xml',
+                '/sitemap/SiteTree.xml',
+                '/sitemap/SiteTree/1.xml',
+                '/sitemap/SiteTree/1',
+                '/post-sitemap.xml',
+                '/page-sitemap.xml',
+                '/product-sitemap.xml',
+                '/category-sitemap.xml'
+            ];
+
+            onProgress?.('Checking common sitemap locations...', 40);
+            for (const variation of variations) {
+                response = await tryFetchUrl(baseUrl + variation);
+                if (response) {
+                    console.log('Found sitemap at variation:', variation);
+                    break;
+                }
             }
         }
 
-        // Try common sitemap locations
-        onProgress?.('Checking common sitemap locations...', 40);
-        for (const path of COMMON_SITEMAP_PATHS) {
-            const sitemapUrl = `${baseUrl}${path}`;
-            console.log('Trying sitemap location:', sitemapUrl);
+        // Step 5: Check robots.txt as last resort
+        if (!response) {
+            onProgress?.('Checking robots.txt...', 50);
+            const baseUrl = new URL(normalizedUrl).origin;
+            const robotsResponse = await tryFetchUrl(baseUrl + '/robots.txt');
             
-            const response = await tryFetchSitemap(sitemapUrl);
-            if (response) {
-                console.log('Successfully found sitemap at:', sitemapUrl);
-                return processSitemapResponse(response, onProgress);
+            if (robotsResponse) {
+                const robotsText = await robotsResponse.text();
+                const sitemapMatches = robotsText.match(/^Sitemap:\s*(.+)$/gm);
+                
+                if (sitemapMatches) {
+                    console.log('Found sitemap entries in robots.txt:', sitemapMatches.length);
+                    const sitemapUrls = sitemapMatches
+                        .map(match => match.replace(/^Sitemap:\s*/, '').trim())
+                        .filter(Boolean);
+
+                    // Try each sitemap URL from robots.txt
+                    for (const sitemapUrl of sitemapUrls) {
+                        response = await tryFetchUrl(sitemapUrl);
+                        if (response) {
+                            console.log('Successfully fetched sitemap from robots.txt:', sitemapUrl);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
-        throw new Error('Could not find sitemap. Please check the URL and try again.');
-    } catch (error: unknown) {
+        if (!response) {
+            throw new Error('Could not find sitemap. Please check the URL and try again.');
+        }
+
+        onProgress?.('Processing sitemap...', 60);
+        return processSitemapResponse(response, onProgress);
+    } catch (error) {
         console.error('Sitemap fetch error:', error);
         if (error instanceof Error) {
             throw new Error(`Failed to fetch sitemap: ${error.message}`);
         }
         throw new Error('Failed to fetch sitemap: Unknown error');
     }
+}
+
+interface SitemapIndexEntry {
+    loc: string;
+}
+
+interface SitemapUrlEntry {
+    loc: string;
+    lastmod?: string;
+    changefreq?: string;
+    priority?: string;
 }
 
 async function processSitemapResponse(

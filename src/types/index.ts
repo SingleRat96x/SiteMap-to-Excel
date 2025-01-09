@@ -1,3 +1,5 @@
+import { ReactNode } from 'react';
+
 export interface SitemapUrl {
     loc: string;
     lastmod?: string;
@@ -16,7 +18,7 @@ export interface AppState {
     urls: SitemapUrl[];
     filteredUrls: SitemapUrl[];
     isLoading: boolean;
-    error: string | null;
+    error: ReactNode | null;
     filterOptions: FilterOptions;
 }
 

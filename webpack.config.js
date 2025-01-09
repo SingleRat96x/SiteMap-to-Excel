@@ -56,6 +56,7 @@ module.exports = {
           }
         },
         { from: 'manifest.json' },
+        { from: 'privacy-policy.html' },
       ],
     }),
     new webpack.ProvidePlugin({
